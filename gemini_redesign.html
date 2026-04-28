@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gemini Redesign — Focus Mode</title>
+<style>
+  :root {
+    --bg-primary: #0D0D0D;
+    --bg-surface: #141414;
+    --bg-elevated: #1A1A1A;
+    --bg-hover: #222222;
+    --text-primary: #E8E8E8;
+    --text-secondary: #9CA3AF;
+    --text-tertiary: #6B7280;
+    --accent-primary: #5C9CFF;
+    --accent-primary-dim: #3B82F6;
+    --accent-glow: rgba(92, 156, 255, 0.15);
+    --border-default: #262626;
+    --border-hover: #333333;
+    --radius-card: 8px;
+    --radius-bubble: 12px;
+    --radius-pill: 100px;
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+    --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    line-height: 1.6;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+
+  /* ===== SIDEBAR ===== */
+  .sidebar {
+    width: 260px;
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border-default);
+    display: flex;
+    flex-direction: column;
+    transition: width var(--transition), transform var(--transition);
+    flex-shrink: 0;
+  }
+
+  .sidebar.collapsed {
+    width: 0;
+    overflow: hidden;
+    border-right: none;
+  }
+
+  .sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-default);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo {
+    width: 28px;
+    height: 28px;
+    background: linear-gradient(135deg, #4285F4, #34A853, #FBBC04, #EA4335);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .sidebar-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .new-chat-btn {
+    margin: 12px 16px;
+    padding: 10px 14px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-card);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all var(--transition);
+  }
+
+  .new-chat-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-hover);
+  }
+
+  .sidebar-section {
+    padding: 8px 12px;
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 8px 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .chat-item {
+    padding: 8px 12px;
+    border-radius: var(--radius-card);
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all var(--transition);
+    margin-bottom: 2px;
+    position: relative;
+  }
+
+  .chat-item:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  .chat-item.active {
+    background: var(--accent-glow);
+    color: var(--accent-primary);
+  }
+
+  .chat-item .chat-icon {
+    font-size: 14px;
+    opacity: 0.6;
+  }
+
+  .chat-item.active .chat-icon {
+    opacity: 1;
+  }
+
+  .chat-item .chat-title {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .project-tag {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: var(--radius-pill);
+    background: var(--bg-elevated);
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+  }
+
+  .chat-item.active .project-tag {
+    background: rgba(92, 156, 255, 0.15);
+    color: var(--accent-primary);
+  }
+
+  /* ===== MAIN AREA ===== */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    position: relative;
+  }
+
+  /* Top Bar */
+  .top-bar {
+    height: 52px;
+    border-bottom: 1px solid var(--border-default);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    background: var(--bg-surface);
+    flex-shrink: 0;
+  }
+
+  .top-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .icon-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-card);
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: all var(--transition);
+  }
+
+  .icon-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  .icon-btn.active {
+    background: var(--accent-glow);
+    color: var(--accent-primary);
+  }
+
+  .model-badge {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-default);
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+
+  .model-badge:hover {
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+  }
+
+  .top-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .focus-toggle {
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: var(--radius-pill);
+    background: var(--accent-glow);
+    color: var(--accent-primary);
+    border: 1px solid rgba(92, 156, 255, 0.3);
+    cursor: pointer;
+    font-weight: 500;
+    transition: all var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .focus-toggle:hover {
+    background: rgba(92, 156, 255, 0.2);
+  }
+
+  .focus-toggle.off {
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    border-color: var(--border-default);
+  }
+
+  /* ===== CHAT AREA ===== */
+  .chat-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .chat-content {
+    width: 100%;
+    max-width: 720px;
+  }
+
+  .message {
+    margin-bottom: 24px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .message-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .message-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+  }
+
+  .message-avatar.user {
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+  }
+
+  .message-avatar.gemini {
+    background: linear-gradient(135deg, #4285F4, #34A853);
+    color: white;
+  }
+
+  .message-body {
+    padding-left: 32px;
+    color: var(--text-primary);
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  .message-body p {
+    margin-bottom: 12px;
+  }
+
+  /* Code Block */
+  .code-block {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-card);
+    margin: 16px 0;
+    overflow: hidden;
+  }
+
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-default);
+  }
+
+  .code-lang {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .code-actions {
+    display: flex;
+    gap: 4px;
+  }
+
+  .code-action-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 4px;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: all var(--transition);
+    font-family: var(--font-body);
+  }
+
+  .code-action-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  .code-body {
+    padding: 12px 16px;
+    overflow-x: auto;
+  }
+
+  .code-body pre {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-primary);
+    white-space: pre;
+  }
+
+  /* Line numbers that DON'T copy */
+  .code-lines {
+    display: table;
+    width: 100%;
+  }
+
+  .code-line {
+    display: table-row;
+  }
+
+  .line-num {
+    display: table-cell;
+    width: 1px;
+    padding-right: 16px;
+    color: var(--text-tertiary);
+    font-size: 12px;
+    text-align: right;
+    user-select: none;
+    -webkit-user-select: none;
+    border-right: 1px solid var(--border-default);
+    padding-left: 8px;
+  }
+
+  .line-content {
+    display: table-cell;
+    padding-left: 16px;
+    white-space: pre;
+  }
+
+  /* Syntax highlighting */
+  .kw { color: #C792EA; }
+  .fn { color: #82AAFF; }
+  .str { color: #C3E88D; }
+  .num { color: #F78C6C; }
+  .cm { color: #546E7A; font-style: italic; }
+  .cls { color: #FFCB6B; }
+
+  /* Diff visualization */
+  .diff-block {
+    margin: 16px 0;
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    border: 1px solid var(--border-default);
+  }
+
+  .diff-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-default);
+  }
+
+  .diff-file {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+  }
+
+  .diff-hunk {
+    display: flex;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .diff-line-num {
+    width: 50px;
+    text-align: right;
+    padding: 2px 8px;
+    color: var(--text-tertiary);
+    font-size: 12px;
+    user-select: none;
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border-default);
+  }
+
+  .diff-line-content {
+    flex: 1;
+    padding: 2px 12px;
+    white-space: pre;
+  }
+
+  .diff-add {
+    background: rgba(52, 168, 83, 0.1);
+  }
+  .diff-add .diff-line-num { color: #34A853; }
+
+  .diff-del {
+    background: rgba(234, 67, 53, 0.1);
+  }
+  .diff-del .diff-line-num { color: #EA4335; }
+
+  .diff-neutral {
+    background: var(--bg-elevated);
+  }
+
+  .diff-actions {
+    display: flex;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border-default);
+  }
+
+  .diff-btn {
+    padding: 6px 14px;
+    font-size: 12px;
+    border-radius: var(--radius-card);
+    border: 1px solid var(--border-default);
+    cursor: pointer;
+    font-weight: 500;
+    transition: all var(--transition);
+  }
+
+  .diff-btn.accept {
+    background: rgba(52, 168, 83, 0.15);
+    color: #34A853;
+    border-color: rgba(52, 168, 83, 0.3);
+  }
+
+  .diff-btn.accept:hover {
+    background: rgba(52, 168, 83, 0.25);
+  }
+
+  .diff-btn.reject {
+    background: transparent;
+    color: var(--text-secondary);
+  }
+
+  .diff-btn.reject:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  /* Citations */
+  .citation {
+    display: inline;
+    vertical-align: super;
+    font-size: 10px;
+    color: var(--accent-primary);
+    cursor: pointer;
+    margin-left: 2px;
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .citation:hover {
+    text-decoration: underline;
+  }
+
+  /* Grounding badge */
+  .grounding-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-card);
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--text-tertiary);
+  }
+
+  .grounding-bar .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #34A853;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ===== INPUT AREA ===== */
+  .input-area {
+    padding: 16px 20px 24px;
+    background: var(--bg-primary);
+    border-top: 1px solid var(--border-default);
+    flex-shrink: 0;
+  }
+
+  .input-wrapper {
+    max-width: 720px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .input-box {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-bubble);
+    padding: 14px 48px 14px 16px;
+    min-height: 52px;
+    max-height: 200px;
+    overflow-y: auto;
+    color: var(--text-primary);
+    font-size: 15px;
+    line-height: 1.5;
+    outline: none;
+    transition: all var(--transition);
+    cursor: text;
+  }
+
+  .input-box:focus {
+    border-color: var(--accent-primary-dim);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  .input-box:empty:before {
+    content: "Ask anything...";
+    color: var(--text-tertiary);
+  }
+
+  .input-actions {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    display: flex;
+    gap: 4px;
+  }
+
+  .input-action {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: all var(--transition);
+  }
+
+  .input-action:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  .input-action.send {
+    background: var(--accent-primary-dim);
+    color: white;
+  }
+
+  .input-action.send:hover {
+    background: var(--accent-primary);
+  }
+
+  .input-hints {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    padding-left: 4px;
+  }
+
+  .hint-pill {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    background: var(--bg-surface);
+    color: var(--text-tertiary);
+    border: 1px solid var(--border-default);
+    cursor: pointer;
+    transition: all var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .hint-pill:hover {
+    border-color: var(--border-hover);
+    color: var(--text-secondary);
+  }
+
+  .hint-pill .at {
+    color: var(--accent-primary);
+    font-weight: 600;
+  }
+
+  /* ===== RIGHT PANEL (Context) ===== */
+  .right-panel {
+    width: 300px;
+    background: var(--bg-surface);
+    border-left: 1px solid var(--border-default);
+    display: flex;
+    flex-direction: column;
+    transition: width var(--transition), transform var(--transition);
+    flex-shrink: 0;
+  }
+
+  .right-panel.collapsed {
+    width: 0;
+    overflow: hidden;
+    border-left: none;
+  }
+
+  .panel-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-default);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .panel-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+  }
+
+  .context-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-card);
+    padding: 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+
+  .context-card:hover {
+    border-color: var(--border-hover);
+    background: var(--bg-hover);
+  }
+
+  .context-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .context-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+  }
+
+  .context-icon.gmail { background: #EA4335; color: white; }
+  .context-icon.docs { background: #4285F4; color: white; }
+  .context-icon.drive { background: #FBBC04; color: #1A1A1A; }
+  .context-icon.calendar { background: #34A853; color: white; }
+
+  .context-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .context-meta {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    padding-left: 28px;
+  }
+
+  /* ===== FOCUS MODE OVERRIDES ===== */
+  body.focus-mode .sidebar { width: 0; overflow: hidden; border: none; }
+  body.focus-mode .right-panel { width: 0; overflow: hidden; border: none; }
+  body.focus-mode .top-bar { height: 0; padding: 0; overflow: hidden; border: none; }
+  body.focus-mode .chat-container { padding-top: 20px; }
+  body.focus-mode .grounding-bar { display: none; }
+  body.focus-mode .hint-pills { display: none; }
+  body.focus-mode .chat-content { max-width: 800px; }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 1200px) {
+    .right-panel { width: 0; overflow: hidden; border: none; }
+  }
+
+  @media (max-width: 768px) {
+    .sidebar { width: 0; overflow: hidden; border: none; }
+    .chat-container { padding: 16px 12px; }
+    .chat-content { max-width: 100%; }
+    .input-area { padding: 12px; }
+  }
+
+  /* ===== TOOLTIP ===== */
+  [data-tooltip] {
+    position: relative;
+  }
+
+  [data-tooltip]:after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition);
+    border: 1px solid var(--border-default);
+    z-index: 100;
+  }
+
+  [data-tooltip]:hover:after {
+    opacity: 1;
+  }
+
+  /* ===== EMPTY STATE ===== */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    color: var(--text-tertiary);
+  }
+
+  .empty-state h2 {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+
+  .empty-state p {
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+
+  .quick-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .quick-action {
+    padding: 10px 16px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-card);
+    color: var(--text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+
+  .quick-action:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+  }
+
+  /* ===== STREAMING CURSOR ===== */
+  .cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1.2em;
+    background: var(--accent-primary);
+    vertical-align: text-bottom;
+    margin-left: 2px;
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  /* ===== STATUS BAR ===== */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-bottom: 8px;
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-primary);
+    animation: pulse 1.5s infinite;
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">G</div>
+    <span class="sidebar-title">Gemini</span>
+  </div>
+  <button class="new-chat-btn">
+    <span>+</span> New chat
+  </button>
+  <div class="sidebar-section">
+    <div class="section-label">
+      <span>Today</span>
+    </div>
+    <div class="chat-item active">
+      <span class="chat-icon">⚡</span>
+      <span class="chat-title">React component redesign</span>
+      <span class="project-tag">Code</span>
+    </div>
+    <div class="chat-item">
+      <span class="chat-icon">📝</span>
+      <span class="chat-title">Blog post draft — AI UX</span>
+      <span class="project-tag">Write</span>
+    </div>
+    <div class="section-label" style="margin-top: 12px;">
+      <span>Projects</span>
+    </div>
+    <div class="chat-item">
+      <span class="chat-icon">📁</span>
+      <span class="chat-title">Gemini Redesign</span>
+      <span class="project-tag">3 chats</span>
+    </div>
+    <div class="chat-item">
+      <span class="chat-icon">📁</span>
+      <span class="chat-title">Q2 Marketing</span>
+      <span class="project-tag">7 chats</span>
+    </div>
+    <div class="section-label" style="margin-top: 12px;">
+      <span>Yesterday</span>
+    </div>
+    <div class="chat-item">
+      <span class="chat-icon">🔍</span>
+      <span class="chat-title">Competitor analysis</span>
+    </div>
+    <div class="chat-item">
+      <span class="chat-icon">🐛</span>
+      <span class="chat-title">Debug auth flow</span>
+      <span class="project-tag">Code</span>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <!-- Top Bar -->
+  <header class="top-bar">
+    <div class="top-bar-left">
+      <button class="icon-btn" id="toggleSidebar" data-tooltip="Toggle sidebar">☰</button>
+      <span class="model-badge" id="modelBadge">Gemini 2.5 Pro</span>
+    </div>
+    <div class="top-bar-right">
+      <button class="icon-btn" id="togglePanel" data-tooltip="Workspace context">🔗</button>
+      <button class="focus-toggle off" id="focusToggle">
+        <span>🎯</span> Focus
+      </button>
+    </div>
+  </header>
+
+  <!-- Chat Area -->
+  <div class="chat-container" id="chatContainer">
+    <div class="chat-content" id="chatContent">
+      <!-- Messages will be injected here -->
+    </div>
+  </div>
+
+  <!-- Input -->
+  <div class="input-area">
+    <div class="input-wrapper">
+      <div class="input-box" id="inputBox" contenteditable="true" placeholder="Ask anything..."></div>
+      <div class="input-actions">
+        <button class="input-action" data-tooltip="Attach file">📎</button>
+        <button class="input-action send" id="sendBtn" data-tooltip="Send (Enter)">➤</button>
+      </div>
+    </div>
+    <div class="input-hints" id="hintPills">
+      <span class="hint-pill"><span class="at">@</span>CodeReviewer</span>
+      <span class="hint-pill"><span class="at">@</span>Workspace</span>
+      <span class="hint-pill">Deep Research</span>
+    </div>
+  </div>
+</main>
+
+<!-- RIGHT PANEL -->
+<aside class="right-panel collapsed" id="rightPanel">
+  <div class="panel-header">
+    <span>Workspace Context</span>
+    <button class="icon-btn" id="closePanel">×</button>
+  </div>
+  <div class="panel-content">
+    <div class="context-card">
+      <div class="context-card-header">
+        <div class="context-icon gmail">M</div>
+        <span class="context-title">Re: Q2 Roadmap Discussion</span>
+      </div>
+      <div class="context-meta">2 hrs ago · 4 messages</div>
+    </div>
+    <div class="context-card">
+      <div class="context-card-header">
+        <div class="context-icon docs">D</div>
+        <span class="context-title">Gemini UI Audit v2</span>
+      </div>
+      <div class="context-meta">Edited today · 12 pages</div>
+    </div>
+    <div class="context-card">
+      <div class="context-card-header">
+        <div class="context-icon drive">Dr</div>
+        <span class="context-title">Design Assets / Q2</span>
+      </div>
+      <div class="context-meta">3 files · 24MB</div>
+    </div>
+    <div class="context-card">
+      <div class="context-card-header">
+        <div class="context-icon calendar">C</div>
+        <span class="context-title">Design Review — 2:00 PM</span>
+      </div>
+      <div class="context-meta">Today · 30 min</div>
+    </div>
+  </div>
+</aside>
+
+<script>
+// ===== STATE =====
+let focusMode = false;
+let sidebarOpen = true;
+let panelOpen = false;
+let isGenerating = false;
+
+// ===== DOM REFS =====
+const sidebar = document.getElementById('sidebar');
+const rightPanel = document.getElementById('rightPanel');
+const focusToggle = document.getElementById('focusToggle');
+const toggleSidebar = document.getElementById('toggleSidebar');
+const togglePanel = document.getElementById('togglePanel');
+const closePanel = document.getElementById('closePanel');
+const chatContent = document.getElementById('chatContent');
+const inputBox = document.getElementById('inputBox');
+const sendBtn = document.getElementById('sendBtn');
+const modelBadge = document.getElementById('modelBadge');
+
+// ===== FOCUS MODE =====
+focusToggle.addEventListener('click', () => {
+  focusMode = !focusMode;
+  document.body.classList.toggle('focus-mode', focusMode);
+  focusToggle.classList.toggle('off', !focusMode);
+  focusToggle.innerHTML = focusMode 
+    ? '<span>🎯</span> Focus On' 
+    : '<span>🎯</span> Focus';
+});
+
+// ===== SIDEBAR TOGGLE =====
+toggleSidebar.addEventListener('click', () => {
+  sidebarOpen = !sidebarOpen;
+  sidebar.classList.toggle('collapsed', !sidebarOpen);
+});
+
+// ===== PANEL TOGGLE =====
+togglePanel.addEventListener('click', () => {
+  panelOpen = !panelOpen;
+  rightPanel.classList.toggle('collapsed', !panelOpen);
+});
+
+closePanel.addEventListener('click', () => {
+  panelOpen = false;
+  rightPanel.classList.add('collapsed');
+});
+
+// ===== MODEL BADGE =====
+modelBadge.addEventListener('click', () => {
+  const models = ['Gemini 2.5 Pro', 'Gemini 2.5 Flash', 'Gemini 2.0 Ultra'];
+  const current = modelBadge.textContent;
+  const next = models[(models.indexOf(current) + 1) % models.length];
+  modelBadge.textContent = next;
+});
+
+// ===== SEND MESSAGE =====
+function sendMessage() {
+  const text = inputBox.textContent.trim();
+  if (!text || isGenerating) return;
+
+  // Add user message
+  addUserMessage(text);
+  inputBox.textContent = '';
+  isGenerating = true;
+
+  // Simulate response
+  setTimeout(() => {
+    addGeminiMessage();
+  }, 600);
+}
+
+sendBtn.addEventListener('click', sendMessage);
+inputBox.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+// ===== ADD USER MESSAGE =====
+function addUserMessage(text) {
+  const msg = document.createElement('div');
+  msg.className = 'message';
+  msg.innerHTML = `
+    <div class="message-header">
+      <div class="message-avatar user">You</div>
+      <span>You</span>
+    </div>
+    <div class="message-body">
+      <p>${escapeHtml(text)}</p>
+    </div>
+  `;
+  chatContent.appendChild(msg);
+  scrollToBottom();
+}
+
+// ===== ADD GEMINI MESSAGE =====
+function addGeminiMessage() {
+  const msg = document.createElement('div');
+  msg.className = 'message';
+  msg.innerHTML = `
+    <div class="message-header">
+      <div class="message-avatar gemini">G</div>
+      <span>Gemini</span>
+    </div>
+    <div class="message-body" id="geminiBody">
+      <div class="status-bar">
+        <div class="status-dot"></div>
+        <span>Analyzing your request...</span>
+      </div>
+    </div>
+  `;
+  chatContent.appendChild(msg);
+  scrollToBottom();
+
+  // Simulate streaming
+  const body = msg.querySelector('#geminiBody');
+  const responses = [
+    { delay: 800, html: `<p>I'll help you redesign the Gemini UI based on the research report. Here's a comprehensive approach addressing the key pain points:</p>` },
+    { delay: 1600, html: `<p><strong>1. Focus Mode Implementation</strong></p><p>The most requested feature is a one-click toggle that strips all metadata, leaving only the conversation. This addresses the "visual noise" complaint from writers and the "agent priority inversion" issue for developers.</p>` },
+    { delay: 2400, html: `<p><strong>2. Adaptive Panel System</strong></p><p>For developers on ultra-wide monitors, we need a draggable 3-panel layout: chat, code editor, and preview. The current 2-panel collapse is the #1 complaint on Google Developer Forums.</p>` },
+    { delay: 3200, html: `<p><strong>3. Fixed Code Copy Behavior</strong></p>` },
+    { delay: 3600, html: createCodeBlock() },
+    { delay: 4800, html: `<p>Notice the line numbers above — they use CSS pseudo-elements with <code>user-select: none</code>, so copying the code won't include them. This fixes the "particularly painful UX oversight" that even Gemini acknowledged.</p>` },
+    { delay: 5600, html: `<p><strong>4. Git-Style Diff Visualization</strong></p><p>When suggesting code changes, render them as inline diffs with accept/reject per hunk:</p>` },
+    { delay: 6000, html: createDiffBlock() },
+    { delay: 7200, html: `<p><strong>5. Context-Aware Workspace Panel</strong></p><p>Instead of dumping Gmail content into chat, show a collapsible right sidebar with connected Workspace state. Smart references appear as compact pills like <span class="citation">[1]</span> that expand on click.</p>` },
+    { delay: 8000, html: `<div class="grounding-bar"><div class="dot"></div><span>Grounded in 3 sources · Verified just now</span></div>` },
+  ];
+
+  let i = 0;
+  function streamNext() {
+    if (i >= responses.length) {
+      isGenerating = false;
+      return;
+    }
+    const resp = responses[i];
+    setTimeout(() => {
+      if (i === 0) body.innerHTML = '';
+      body.insertAdjacentHTML('beforeend', resp.html);
+      scrollToBottom();
+      i++;
+      streamNext();
+    }, i === 0 ? resp.delay : resp.delay - responses[i-1].delay);
+  }
+  streamNext();
+}
+
+// ===== CODE BLOCK =====
+function createCodeBlock() {
+  const code = `function copyWithoutLineNumbers() {
+  // Line numbers are rendered via CSS
+  // user-select: none prevents them from
+  // being included in clipboard
+  const lines = document.querySelectorAll('.line-num');
+  lines.forEach(line => {
+    line.style.userSelect = 'none';
+  });
+  return 'Fixed!';
+}`;
+  const lines = code.split('
+');
+  let html = `<div class="code-block">
+    <div class="code-header">
+      <span class="code-lang">JavaScript</span>
+      <div class="code-actions">
+        <button class="code-action-btn" onclick="copyCode(this)">Copy</button>
+        <button class="code-action-btn">Run</button>
+        <button class="code-action-btn">Insert</button>
+      </div>
+    </div>
+    <div class="code-body">
+      <div class="code-lines">`;
+
+  lines.forEach((line, idx) => {
+    const colored = syntaxHighlight(line);
+    html += `<div class="code-line">
+      <span class="line-num">${idx + 1}</span>
+      <span class="line-content">${colored}</span>
+    </div>`;
+  });
+
+  html += `</div></div></div>`;
+  return html;
+}
+
+// ===== DIFF BLOCK =====
+function createDiffBlock() {
+  return `<div class="diff-block">
+    <div class="diff-header">
+      <span class="diff-file">src/components/Chat.tsx</span>
+      <div class="code-actions">
+        <button class="code-action-btn">Copy</button>
+      </div>
+    </div>
+    <div class="diff-hunk">
+      <div style="flex:1;">
+        <div class="diff-line diff-del">
+          <span class="diff-line-num">14</span>
+          <span class="diff-line-content">-  const [sidebar, setSidebar] = useState(true);</span>
+        </div>
+        <div class="diff-line diff-add">
+          <span class="diff-line-num">14</span>
+          <span class="diff-line-content">+  const [sidebar, setSidebar] = useState(false);</span>
+        </div>
+        <div class="diff-line diff-neutral">
+          <span class="diff-line-num">15</span>
+          <span class="diff-line-content">   const [focusMode, setFocusMode] = useState(false);</span>
+        </div>
+        <div class="diff-line diff-add">
+          <span class="diff-line-num">16</span>
+          <span class="diff-line-content">+  const [panelLayout, setPanelLayout] = useState('default');</span>
+        </div>
+      </div>
+    </div>
+    <div class="diff-actions">
+      <button class="diff-btn accept">✓ Accept hunk</button>
+      <button class="diff-btn reject">✕ Reject</button>
+    </div>
+  </div>`;
+}
+
+// ===== SYNTAX HIGHLIGHT =====
+function syntaxHighlight(line) {
+  return line
+    .replace(/(function|const|let|var|return|if|for|while)/g, '<span class="kw">$1</span>')
+    .replace(/(document|window|console)/g, '<span class="cls">$1</span>')
+    .replace(/(querySelectorAll|forEach|log)/g, '<span class="fn">$1</span>')
+    .replace(/('.*?')/g, '<span class="str">$1</span>')
+    .replace(/(\/\/.*)/g, '<span class="cm">$1</span>');
+}
+
+// ===== COPY CODE =====
+function copyCode(btn) {
+  const block = btn.closest('.code-block');
+  const contents = block.querySelectorAll('.line-content');
+  const text = Array.from(contents).map(el => el.textContent).join('
+');
+  navigator.clipboard.writeText(text).then(() => {
+    const original = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = original, 1500);
+  });
+}
+
+// ===== UTILS =====
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function scrollToBottom() {
+  const container = document.getElementById('chatContainer');
+  container.scrollTop = container.scrollHeight;
+}
+
+// ===== INIT =====
+// Show empty state initially
+chatContent.innerHTML = `
+  <div class="empty-state">
+    <h2>What can I help you build?</h2>
+    <p>Try the Focus Mode toggle (🎯) or open Workspace Context (🔗)</p>
+    <div class="quick-actions">
+      <button class="quick-action" onclick="fillInput('Redesign Gemini UI with Focus Mode')">Redesign Gemini UI</button>
+      <button class="quick-action" onclick="fillInput('Build a React component with diff view')">Build diff viewer</button>
+      <button class="quick-action" onclick="fillInput('Create adaptive panel layout')">Adaptive panels</button>
+    </div>
+  </div>
+`;
+
+function fillInput(text) {
+  inputBox.textContent = text;
+  inputBox.focus();
+}
+</script>
+
+</body>
+</html>
